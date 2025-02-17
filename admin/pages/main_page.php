@@ -71,6 +71,30 @@ foreach ($form->getFormTabs() as $formTab) {
         $tabControl->AddEditField('section_add[code]', '🔤 Символьный код', false, [], '');
         $tabControl->AddEditField('section_add[sort]', '🔝️ Сортировка', false, [], 100);
     }
+
+    // Вкладка о нас
+    if ('about' === $formTab['DIV']) {
+        $tabControl->AddViewField(
+            'about-license',
+            '⚖️ Лицензия',
+            '<a target="_blank" href="https://github.com/claramente-ru/bitrix-hladmin/blob/master/LICENSE">MIT</a>'
+        );
+        $tabControl->AddViewField(
+            'about-git',
+            '𝗚𝐈𝗧️ GitHub',
+            '<a target="_blank" href="https://github.com/claramente-ru/bitrix-hladmin">https://github.com/claramente-ru/bitrix-hladmin</a>'
+        );
+        $tabControl->AddViewField(
+            'about-packagist',
+            '🐘️ Packagist',
+            '<a target="_blank" href="https://packagist.org/packages/claramente/claramente.hladmin">https://packagist.org/packages/claramente/claramente.hladmin</a>'
+        );
+        $tabControl->AddViewField(
+            'about-developer',
+            '⚒️ Разработчик',
+            '<a target="_blank" href="https://claramente.ru">© Светлые головы</a>'
+        );
+    }
 }
 
 // Кнопка добавить новый справочник

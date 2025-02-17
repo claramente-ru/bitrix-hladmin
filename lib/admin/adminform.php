@@ -41,6 +41,8 @@ final class AdminForm
         $tabs[] = $this->collectTab('📚 Справочники', 'hlblocks');
         // Tab для настроек tabs
         $tabs[] = $this->collectTab('🗂️ Секции', 'sections');
+        // Вкладка о нас
+        $tabs[] = $this->collectTab(name: 'ℹ️ О модуле', div: 'about', sort: 999_999_999);
 
         return $tabs;
     }
