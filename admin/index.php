@@ -19,7 +19,11 @@ if (! Loader::includeModule('claramente.hladmin')) {
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';
 
-// Главная страница
-require_once 'pages/main_page.php';
+// Текущая страница
+$page = match ($request->get('page')) {
+    'rights' => '/pages/rights_page.php',
+    default => '/pages/main_page.php',
+};
+require_once __DIR__ . $page;
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/epilog_admin.php';

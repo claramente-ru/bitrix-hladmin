@@ -110,5 +110,5 @@ foreach ($hlblocks as $hlblockId => $hlblockData) {
     }
 }
 
-// Редирект на страницу опций
+// Редирект на страницу модуля
 LocalRedirect('/bitrix/admin/claramente_hladmin.php?lang=' . LANG);

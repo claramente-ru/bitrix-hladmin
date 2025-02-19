@@ -1,11 +1,13 @@
 <?php
 
 use Bitrix\Main\Request;
+use Claramente\Hladmin\Services\HighloadRightService;
 use Claramente\Hladmin\Services\HighloadService;
 use Claramente\Hladmin\Admin\AdminForm;
 
 /**
  * @var Request $request
+ * @var CUser $USER
  */
 
 // Сохранение формы
@@ -13,17 +15,20 @@ if ($request->isPost()) {
     require_once __DIR__ . '/../save/main_save.php';
 }
 
+// Справочник
 $hlblockService = new HighloadService();
+// Права справочника
+$hlRightService = new HighloadRightService();
 
 // Главная страница модуля
 $form = new AdminForm();
-$tabControl = $form->getForm('claramente_hladmin_form', $form->getFormTabs());
+$tabControl = $form->getForm('claramente_hladmin_form', $form->getMainFormTabs());
 $tabControl->SetShowSettings(false);
 $tabControl->Begin([
     'FORM_ACTION' => $request->getRequestUri()
 ]);
 // Проходимся по всем tabs
-foreach ($form->getFormTabs() as $formTab) {
+foreach ($form->getMainFormTabs() as $formTab) {
     $tabControl->BeginNextFormTab();
 
     // Вкладка - Справочники
@@ -37,6 +42,11 @@ foreach ($form->getFormTabs() as $formTab) {
             // Справочники
             foreach ($hlblockService->getHighloads() as $hlblock) {
                 if ($hlblock->sectionStructure?->id === $section->id) {
+                    // Проверка доступности справочника
+                    if (! $hlRightService->checkPermission($hlblock->id)) {
+                        // Отсутствуют права на чтение
+                        continue;
+                    }
                     // Форму редактирования справочника
                     $form->setHlblockEditField($tabControl, $hlblock);
                 }
@@ -47,6 +57,11 @@ foreach ($form->getFormTabs() as $formTab) {
         // Справочники
         foreach ($hlblockService->getHighloads() as $hlblock) {
             if (null === $hlblock->sectionStructure) {
+                // Проверка доступности справочника
+                if (! $hlRightService->checkPermission($hlblock->id)) {
+                    // Отсутствуют права на чтение
+                    continue;
+                }
                 // Форму редактирования справочника
                 $form->setHlblockEditField($tabControl, $hlblock);
             }
@@ -54,7 +69,7 @@ foreach ($form->getFormTabs() as $formTab) {
     }
 
     // Вкладка - Секции
-    if ('sections' === $formTab['DIV']) {
+    if ('sections' === $formTab['DIV']  && $USER->IsAdmin()) {
         foreach ($hlblockService->getSections() as $section) {
             $div = sprintf('sections[%d]', $section->id);
             // Визуальное разделение
@@ -70,6 +85,33 @@ foreach ($form->getFormTabs() as $formTab) {
         $tabControl->AddEditField('section_add[name]', '📝 Заголовок', false, [], '');
         $tabControl->AddEditField('section_add[code]', '🔤 Символьный код', false, [], '');
         $tabControl->AddEditField('section_add[sort]', '🔝️ Сортировка', false, [], 100);
+    }
+
+    // Вкладка права доступа
+    if ('rights' === $formTab['DIV'] && $USER->IsAdmin()) {
+        /**
+         * Для начала выведем секции, потом справочники которые относятся к секциям
+         */
+        foreach ($hlblockService->getSections() as $section) {
+            // Заголовок секции
+            $tabControl->AddSection('section-list-' . $section->id, $section->name);
+            // Справочники
+            foreach ($hlblockService->getHighloads() as $hlblock) {
+                if ($hlblock->sectionStructure?->id === $section->id) {
+                    // Форму редактирования справочника
+                    $form->setHlblockRightField($tabControl, $hlblock);
+                }
+            }
+        }
+        // Справочники без секции
+        $tabControl->AddSection('section-list-no-section', 'Без секции');
+        // Справочники
+        foreach ($hlblockService->getHighloads() as $hlblock) {
+            if (null === $hlblock->sectionStructure) {
+                // Форму редактирования справочника
+                $form->setHlblockRightField($tabControl, $hlblock);
+            }
+        }
     }
 
     // Вкладка о нас
@@ -98,13 +140,16 @@ foreach ($form->getFormTabs() as $formTab) {
 }
 
 // Кнопка добавить новый справочник
-$buttonAddNewParameter = '<a href="/bitrix/admin/highloadblock_entity_edit.php?lang=' . LANG . '"><input type="button" value="Добавить новый Highload-блок" title="Добавить новый Highload-блок" class="adm-btn-add"></a>';
+$buttonAddNewHighload = '';
+if ($USER->IsAdmin()) {
+    $buttonAddNewHighload = '<a href="/bitrix/admin/highloadblock_entity_edit.php?lang=' . LANG . '"><input type="button" value="Добавить новый Highload-блок" title="Добавить новый Highload-блок" class="adm-btn-add"></a>';
+}
 $tabControl->Buttons(
     [
         'disabled' => false,
         'btnApply' => false,
     ],
-    $buttonAddNewParameter
+    $buttonAddNewHighload
 );
 
 $tabControl->Show();

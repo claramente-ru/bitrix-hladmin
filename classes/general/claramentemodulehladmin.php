@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use Claramente\Hladmin\Services\HighloadRightService;
 use Claramente\Hladmin\Services\HighloadService;
 use Claramente\Hladmin\Structures\HlBlockStructure;
 
@@ -17,6 +18,7 @@ final class ClaramenteModuleHlAdmin
      */
     public static function onBuildGlobalMenu(array &$adminMenu, array &$moduleMenu): void
     {
+        $hlRightsService = new HighloadRightService();
         $hlblockService = new HighloadService();
         // Обработаем список справочников в highloadblock секции
         foreach ($moduleMenu as &$moduleMenu) {
@@ -43,6 +45,11 @@ final class ClaramenteModuleHlAdmin
                 // Справочники секции
                 foreach ($hlblockService->getHighloads() as $hlblock) {
                     if ($hlblock->sectionStructure?->id === $section->id) {
+                        // Проверка доступности справочника
+                        if (! $hlRightsService->checkPermission($hlblock->id)) {
+                            // Отсутствуют права на чтение
+                            continue;
+                        }
                         // Добавим справочник в секцию
                         $hlblockElement = self::getHlblockMenuItem($hlblock);
                         $data['items'][] = $hlblockElement;
@@ -53,12 +60,21 @@ final class ClaramenteModuleHlAdmin
                         );
                     }
                 }
+                // Если отсутствуют элементы, не выводим
+                if (! $data['items']) {
+                    continue;
+                }
                 // Добавим собранные справочники
                 $moduleMenu['items'][] = $data;
             }
             // Справочники без секции
             foreach ($hlblockService->getHighloads() as $hlblock) {
                 if (null == $hlblock->sectionStructure) {
+                    // Проверка доступности справочника
+                    if (! $hlRightsService->checkPermission($hlblock->id)) {
+                        // Отсутствуют права на чтение
+                        continue;
+                    }
                     // Добавим справочник в секцию
                     $moduleMenu['items'][] = self::getHlblockMenuItem($hlblock);
                 }

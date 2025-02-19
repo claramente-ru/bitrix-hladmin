@@ -39,27 +39,46 @@ class claramente_hladmin extends CModule
     /**
      * @return void
      */
-    public function DoInstall(): void
+    public function DoInstall(): bool
     {
-        $moduleId = self::GetModuleId();
-        ModuleManager::RegisterModule($moduleId);
+        global $APPLICATION, $DB;
+        // Регистрация событий
         $this->RegisterEventHandlers();
+
+        // Копированием файлов для административной панели
         CopyDirFiles(__DIR__ . '/admin', $_SERVER['DOCUMENT_ROOT'] . '/bitrix/admin');
 
-        // Таблицы модуля
-        global $DB;
+        // Добавим таблицы модуля
         $connection = Application::getConnection();
-        $DB->RunSQLBatch(__DIR__ . '/db/' . $connection->getType() . '/install.sql');
+        $dbInstall = $DB->RunSQLBatch(__DIR__ . '/db/' . $connection->getType() . '/install.sql');
+        if (is_array($dbInstall)) {
+            // Ошибка установки БД
+            $APPLICATION->ThrowException(implode(',', $dbInstall));
+
+            return false;
+        }
+
+        // Все шаги выполнены успешно, регистрируем модуль
+        ModuleManager::RegisterModule(self::GetModuleId());
+
+        return true;
     }
 
     /**
      * @return void
      */
-    public function DoUninstall(): void
+    public function DoUninstall(): bool
     {
-        ModuleManager::UnRegisterModule(self::GetModuleId());
+        // Удаление событий
         $this->UnRegisterEventHandlers();
+
+        // Удаление файлов из административной панели
         DeleteDirFiles(__DIR__ . '/admin', $_SERVER['DOCUMENT_ROOT'] . '/bitrix/admin');
+
+        // Все шаги выполнены успешно, удаляем модуль
+        ModuleManager::UnRegisterModule(self::GetModuleId());
+
+        return true;
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Claramente\Hladmin\Admin;
 
 use CAdminForm;
+use Claramente\Hladmin\Services\HighloadRightService;
 use Claramente\Hladmin\Services\HighloadService;
 use Claramente\Hladmin\Structures\HlBlockStructure;
 use CModule;
@@ -13,6 +14,16 @@ use CModule;
  */
 final class AdminForm
 {
+    /**
+     * @var HighloadRightService
+     */
+    protected HighloadRightService $rightService;
+
+    public function __construct()
+    {
+        $this->rightService = new HighloadRightService();
+    }
+
     /**
      * Получить список секций для select поля
      * @return array
@@ -35,11 +46,13 @@ final class AdminForm
      * Получить вкладки
      * @return array
      */
-    public function getFormTabs(): array
+    public function getMainFormTabs(): array
     {
         $tabs = [];
         $tabs[] = $this->collectTab('📚 Справочники', 'hlblocks');
-        // Tab для настроек tabs
+        // Вкладка доступов
+        $tabs[] = $this->collectTab('🧑‍🧑‍🧒‍🧒️️ Права доступов', 'rights');
+        // Вкладка для настроек tabs
         $tabs[] = $this->collectTab('🗂️ Секции', 'sections');
         // Вкладка о нас
         $tabs[] = $this->collectTab(name: 'ℹ️ О модуле', div: 'about', sort: 999_999_999);
@@ -111,6 +124,7 @@ final class AdminForm
      */
     public function setHlblockEditField(CAdminForm &$form, HlBlockStructure $hlblock): void
     {
+        global $USER;
         $sectionId = sprintf('hlblocks[%d]', $hlblock->id);
         // Начало блока ввода
         $form->BeginCustomField($sectionId, $hlblock->name);
@@ -120,27 +134,90 @@ final class AdminForm
         // Список элементов
         echo '&ensp;| <a href="/bitrix/admin/highloadblock_rows_list.php?ENTITY_ID=' . $hlblock->id . '&lang=' . LANG_ADMIN_LID . '" title="Список элементов" style="text-decoration: none">📋 Элементы</a>';
         // Редактировать
-        echo '&ensp;| <a href="/bitrix/admin/highloadblock_entity_edit.php?ID=' . $hlblock->id . '&lang=' . LANG_ADMIN_LID . '" title="Редактировать" style="text-decoration: none">✏️️ Изменить</a>';
-        // Список полей
-        echo '&ensp;| <a href="/bitrix/admin/userfield_admin.php?find_type=ENTITY_ID&set_filter=Y&find=HLBLOCK_' . $hlblock->id . '&lang=' . LANG_ADMIN_LID . '" title="Список полей" style="text-decoration: none">🛠️️️ Поля</a>';
-        // Миграция справочника
-        if (CModule::IncludeModule('sprint.migration')) {
-            echo '&ensp;| <a href="/bitrix/admin/sprint_migrations.php?config=cfg" title="Миграций" style="text-decoration: none">💾 Миграция</a>';
+        if ($USER->IsAdmin()) {
+            echo '&ensp;| <a href="/bitrix/admin/highloadblock_entity_edit.php?ID=' . $hlblock->id . '&lang=' . LANG_ADMIN_LID . '" title="Редактировать" style="text-decoration: none">✏️️ Изменить</a>';
+            // Список полей
+            echo '&ensp;| <a href="/bitrix/admin/userfield_admin.php?find_type=ENTITY_ID&set_filter=Y&find=HLBLOCK_' . $hlblock->id . '&lang=' . LANG_ADMIN_LID . '" title="Список полей" style="text-decoration: none">🛠️️️ Поля</a>';
+            // Миграция справочника
+            if (CModule::IncludeModule('sprint.migration')) {
+                echo '&ensp;| <a href="/bitrix/admin/sprint_migrations.php?config=cfg" title="Миграций" style="text-decoration: none">💾 Миграция</a>';
+            }
         }
         echo '</td>';
         // Выпадающий список секций
-        echo '<td class="adm-detail-content-cell-r" style="float: left;margin-left: 10px;">Секция: ';
-        echo $this->getFieldSelect(
-            name: $sectionId . '[section]',
-            values: $this->getSelectSections(),
-            selected: $hlblock->sectionStructure?->id
-        );
-        echo '</td>';
-        // Сортировка поля
-        echo '<td class="adm-detail-content-cell-r" style="float: left;margin-left: 10px;">Сортировка: <input type="text" name="' . $sectionId . '[sort]" size="5" value="' . $hlblock->sort . '"></td>';
+        if ($USER->IsAdmin()) {
+            echo '<td class="adm-detail-content-cell-r" style="float: left;margin-left: 10px;">Секция: ';
+            echo $this->getFieldSelect(
+                name: $sectionId . '[section]',
+                values: $this->getSelectSections(),
+                selected: $hlblock->sectionStructure?->id
+            );
+            echo '</td>';
+            // Сортировка поля
+            echo '<td class="adm-detail-content-cell-r" style="float: left;margin-left: 10px;">Сортировка: <input type="text" name="' . $sectionId . '[sort]" size="5" value="' . $hlblock->sort . '"></td>';
+        }
+
         // Подвал
         echo '</tr>';
         $form->EndCustomField($sectionId);
+    }
+
+    /**
+     * HTML форма прав доступа
+     * @param CAdminForm $form
+     * @param HlBlockStructure $hlblock
+     * @return void
+     */
+    public function setHlblockRightField(CAdminForm &$form, HlBlockStructure $hlblock): void
+    {
+        $fieldId = sprintf('right[%d]', $hlblock->id);
+        $form->AddViewField(
+            $fieldId,
+            '',
+            '<a href="/bitrix/admin/claramente_hladmin.php?lang=' . LANG . '&page=rights&ID=' . $hlblock->id . '" style="text-decoration: none;font-weight: bold;">📚 ' . $hlblock->name . '</a>'
+        );
+
+        $hlRights = $this->rightService->getHighloadRights($hlblock);
+        // Шаг 1: Выводим все возможные права
+        foreach ($this->rightService->getHighloadRightTasks() as $task) {
+            $fieldTaskId = sprintf('%s[%d]', $fieldId, $task['ID']);
+            $taskIcon = match ($task['NAME']) {
+                'hblock_write' => '✏️',
+                'hblock_read' => '🔎',
+                default => '🔒'
+            };
+            // Шаг 2: Собираем массив разрешенных правил для этой task
+            $taskRights = [];
+            foreach ($hlRights as $hlRight) {
+                if ($hlRight->taskId != $task['ID']) {
+                    continue;
+                }
+                $taskRights[] = [
+                    'FIELD_ID' => sprintf('%s[%s]', $fieldTaskId, $hlRight->accessCode),
+                    'TEXT' => sprintf('<span style="color: %s;">%s</span>', $this->getAccessCodeHexColor($hlRight->accessCode), $hlRight->groupTitle)
+                ];
+            }
+            // Если отсутствуют права, запишем, что не заполнено
+            if (! $taskRights) {
+                $taskRights[] = [
+                    'FIELD_ID' => sprintf('%s[%s]', $fieldTaskId, 'empty'),
+                    'TEXT' => '<span style="color: #808080;">Не заполнено</span>'
+                ];
+            }
+
+            // Шаг 3: Выводим название правила и первый элемент
+            $firstTaskRight = current($taskRights);
+            $form->AddViewField($fieldTaskId, $taskIcon . ' ' . $task['TITLE'] . ': ', $firstTaskRight['TEXT'], true);
+
+            // Шаг 4: Проходимся по остальным правилам TASK
+            if (count($taskRights) <= 1) {
+                // Указан только один элемент, который мы вывели уже
+                continue;
+            }
+            foreach (array_slice($taskRights, 1, count($taskRights) - 1) as $taskRight) {;
+                $form->AddViewField($taskRight['FIELD_ID'], '', $taskRight['TEXT']);
+            }
+        }
     }
 
     /**
@@ -161,5 +238,19 @@ final class AdminForm
         $html .= '</select>';
 
         return $html;
+    }
+
+    /**
+     * @param string $accessCode
+     * @return string
+     */
+    private function getAccessCodeHexColor(string $accessCode): string
+    {
+        return match ($accessCode) {
+            'G1' => '#F20F0F',
+            'AU' => '#A60FF2',
+            'CR' => '#F0B617',
+            default => '#000'
+        };
     }
 }
