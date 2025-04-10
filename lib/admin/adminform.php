@@ -130,7 +130,7 @@ final class AdminForm
         $form->BeginCustomField($sectionId, $hlblock->name);
         // Шапка
         echo '<tr id="tr_hlblocks[' . $sectionId . '][value]">
-        <td class="adm-detail-content-cell-l">' . htmlspecialcharsbx($hlblock->name ?: $hlblock->code);
+        <td class="adm-detail-content-cell-l">' . htmlspecialcharsbx($hlblock->name ?: $hlblock->code) . '&ensp;| 🆔 ' . $hlblock->id . '&ensp;| 🔤 ' . $hlblock->code;
         // Список элементов
         echo '&ensp;| <a href="/bitrix/admin/highloadblock_rows_list.php?ENTITY_ID=' . $hlblock->id . '&lang=' . LANG_ADMIN_LID . '" title="Список элементов" style="text-decoration: none">📋 Элементы</a>';
         // Редактировать
