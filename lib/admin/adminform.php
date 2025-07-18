@@ -124,41 +124,11 @@ final class AdminForm
      */
     public function setHlblockEditField(CAdminForm &$form, HlBlockStructure $hlblock): void
     {
-        global $USER;
         $sectionId = sprintf('hlblocks[%d]', $hlblock->id);
         // Начало блока ввода
         $form->BeginCustomField($sectionId, $hlblock->name);
-        // Шапка
-        echo '<tr id="tr_hlblocks[' . $sectionId . '][value]">
-        <td class="adm-detail-content-cell-l">' . htmlspecialcharsbx($hlblock->name ?: $hlblock->code) . '&ensp;| 🆔 ' . $hlblock->id . '&ensp;| 🔤 ' . $hlblock->code;
-        // Список элементов
-        echo '&ensp;| <a href="/bitrix/admin/highloadblock_rows_list.php?ENTITY_ID=' . $hlblock->id . '&lang=' . LANG_ADMIN_LID . '" title="Список элементов" style="text-decoration: none">📋 Элементы</a>';
-        // Редактировать
-        if ($USER->IsAdmin()) {
-            echo '&ensp;| <a href="/bitrix/admin/highloadblock_entity_edit.php?ID=' . $hlblock->id . '&lang=' . LANG_ADMIN_LID . '" title="Редактировать" style="text-decoration: none">✏️️ Изменить</a>';
-            // Список полей
-            echo '&ensp;| <a href="/bitrix/admin/userfield_admin.php?find_type=ENTITY_ID&set_filter=Y&find=HLBLOCK_' . $hlblock->id . '&lang=' . LANG_ADMIN_LID . '" title="Список полей" style="text-decoration: none">🛠️️️ Поля</a>';
-            // Миграция справочника
-            if (CModule::IncludeModule('sprint.migration')) {
-                echo '&ensp;| <a href="/bitrix/admin/sprint_migrations.php?config=cfg" title="Миграций" style="text-decoration: none">💾 Миграция</a>';
-            }
-        }
-        echo '</td>';
-        // Выпадающий список секций
-        if ($USER->IsAdmin()) {
-            echo '<td class="adm-detail-content-cell-r" style="float: left;margin-left: 10px;">Секция: ';
-            echo $this->getFieldSelect(
-                name: $sectionId . '[section]',
-                values: $this->getSelectSections(),
-                selected: $hlblock->sectionStructure?->id
-            );
-            echo '</td>';
-            // Сортировка поля
-            echo '<td class="adm-detail-content-cell-r" style="float: left;margin-left: 10px;">Сортировка: <input type="text" name="' . $sectionId . '[sort]" size="5" value="' . $hlblock->sort . '"></td>';
-        }
-
-        // Подвал
-        echo '</tr>';
+        require __DIR__ . '/../../admin/pages/includes/highload_element_list.php';
+        // Конец блока вывода
         $form->EndCustomField($sectionId);
     }
 
